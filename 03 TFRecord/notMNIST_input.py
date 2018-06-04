@@ -33,16 +33,16 @@ import skimage.io as io
 def get_file(file_dir):
     '''Get full image directory and corresponding labels
     Args:
-        file_dir: file directory
+        file_dir: file directory文件绝对路径
     Returns:
-        images: image directories, list, string
+        images: image directories, list, string 图片的路径
         labels: label, list, int
     '''
 
     images = []
     temp = []
-    for root, sub_folders, files in os.walk(file_dir):
-        # image directories
+    for root, sub_folders, files in os.walk(file_dir):#根目录，子目录，文件
+        # image directories得到图片的绝对路径
         for name in files:
             images.append(os.path.join(root, name))
         # get 10 sub-folder names
@@ -89,15 +89,15 @@ def get_file(file_dir):
 
 
 #%%
-
+# 将数据转化成对应的属性
 def int64_feature(value):
   """Wrapper for inserting int64 features into Example proto."""
   if not isinstance(value, list):
     value = [value]
-  return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
+  return tf.train.Feature(int64_list=tf.train.Int64List(value=value))#label转化成int64list格式
 
 def bytes_feature(value):
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))#图片转化成bytelist
 
 #%%
 
@@ -123,16 +123,19 @@ def convert_to_tfrecord(images, labels, save_dir, name):
     
     
     # wait some time here, transforming need some time based on the size of your data.
-    writer = tf.python_io.TFRecordWriter(filename)
+    writer = tf.python_io.TFRecordWriter(filename)#创建writer
     print('\nTransform start......')
     for i in np.arange(0, n_samples):
         try:
             image = io.imread(images[i]) # type(image) must be array!
-            image_raw = image.tostring()
+            image_raw = image.tostring()#tostring把一个逻辑值转换为字符串,并返回结果
             label = int(labels[i])
-            example = tf.train.Example(features=tf.train.Features(feature={
+            # 创建一个 example protocol buffer  
+            # 内部创建一个属性（feature）  
+            example = tf.train.Example(features=tf.train.Features(feature={     
                             'label':int64_feature(label),
                             'image_raw': bytes_feature(image_raw)}))
+             # 将上面的example protocol buffer写入文件
             writer.write(example.SerializeToString())
         except IOError as e:
             print('Could not read:', images[i])
@@ -156,14 +159,18 @@ def read_and_decode(tfrecords_file, batch_size):
     # make an input queue from the tfrecord file
     filename_queue = tf.train.string_input_producer([tfrecords_file])
     
+    #定义一个reader。读取下一个record
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
+    #内部先定义features，这里要和之前创建的时候保持一致
+    #解析读入的一个record
     img_features = tf.parse_single_example(
                                         serialized_example,
                                         features={
                                                'label': tf.FixedLenFeature([], tf.int64),
                                                'image_raw': tf.FixedLenFeature([], tf.string),
                                                })
+    #将字符串解析成图像对应的像素组
     image = tf.decode_raw(img_features['image_raw'], tf.uint8)
     
     ##########################################################
@@ -215,6 +222,7 @@ image_batch, label_batch = read_and_decode(tfrecords_file, batch_size=BATCH_SIZE
 with tf.Session()  as sess:
     
     i = 0
+    #创建线程初始化
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
     
@@ -233,6 +241,7 @@ with tf.Session()  as sess:
     
 
 #%%
+
 
 
 
